@@ -43,9 +43,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		// Account for border (2) + title line rendered inside border (0 extra, border includes it)
+		// Account for border (2) + title line with newline (1)
 		innerWidth := msg.Width - 2
-		innerHeight := msg.Height - 2
+		innerHeight := msg.Height - 3
 		if innerWidth < 0 {
 			innerWidth = 0
 		}
