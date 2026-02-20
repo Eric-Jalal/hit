@@ -143,7 +143,9 @@ func (m Model) View() string {
 	switch m.currentView {
 	case ViewBranches:
 		content = m.branchModel.View()
-		if m.branchModel.IsInputActive() {
+		if m.branchModel.IsConfirming() {
+			hints = formatHints([][]string{{"y", "rename remote"}, {"n", "local only"}, {"esc", "cancel"}})
+		} else if m.branchModel.IsInputActive() {
 			hints = formatHints([][]string{{"enter", "confirm"}, {"esc", "cancel"}})
 		} else {
 			hints = formatHints([][]string{{"enter", "checkout"}, {"a", "new branch"}, {"R", "rename"}, {"r", "refresh"}, {"/", "filter"}, {"tab", "next view"}, {"q", "quit"}})

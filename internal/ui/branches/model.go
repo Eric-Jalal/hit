@@ -25,21 +25,25 @@ type branchCreatedMsg struct {
 }
 
 type branchRenamedMsg struct {
-	oldName string
-	newName string
-	err     error
+	oldName     string
+	newName     string
+	renamedRemote bool
+	err         error
 }
 
 type Model struct {
-	repo          *git.Repo
-	list          list.Model
-	nameInput     textinput.Model
-	creating      bool
-	renaming      bool
-	renamingFrom  string
-	width         int
-	height        int
-	status        string
+	repo              *git.Repo
+	list              list.Model
+	nameInput         textinput.Model
+	creating          bool
+	renaming          bool
+	renamingFrom      string
+	confirmRemote     bool
+	pendingOldName    string
+	pendingNewName    string
+	width             int
+	height            int
+	status            string
 }
 
 func New(repo *git.Repo) Model {
@@ -57,7 +61,11 @@ func New(repo *git.Repo) Model {
 }
 
 func (m Model) IsInputActive() bool {
-	return m.creating || m.renaming
+	return m.creating || m.renaming || m.confirmRemote
+}
+
+func (m Model) IsConfirming() bool {
+	return m.confirmRemote
 }
 
 func (m Model) Init() tea.Cmd {
@@ -106,10 +114,17 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			m.status = styles.ErrorLineStyle.Render("Rename failed: ") + styles.SubtitleStyle.Render(msg.err.Error())
 			return m, nil
 		}
-		m.status = styles.BadgeSuccess.Render("Renamed ") + styles.HighlightStyle.Render(msg.oldName) + styles.BadgeSuccess.Render(" to ") + styles.HighlightStyle.Render(msg.newName)
+		status := styles.BadgeSuccess.Render("Renamed ") + styles.HighlightStyle.Render(msg.oldName) + styles.BadgeSuccess.Render(" to ") + styles.HighlightStyle.Render(msg.newName)
+		if msg.renamedRemote {
+			status += styles.BadgeSuccess.Render(" (local + remote)")
+		}
+		m.status = status
 		return m, m.loadBranches
 
 	case tea.KeyMsg:
+		if m.confirmRemote {
+			return m.handleConfirmRemote(msg)
+		}
 		if m.creating {
 			return m.handleCreateInput(msg)
 		}
@@ -177,7 +192,32 @@ func (m Model) View() string {
 	if m.status != "" {
 		content += "\n" + lipgloss.NewStyle().MarginLeft(2).Render(m.status)
 	}
+	if m.confirmRemote {
+		content = m.renderConfirmOverlay(content)
+	}
 	return content
+}
+
+func (m Model) renderConfirmOverlay(_ string) string {
+	title := styles.TitleStyle.Render("Rename remote branch?")
+	desc := styles.SubtitleStyle.Render(m.pendingOldName+" exists on remote.\nThis will delete the old remote branch and force push the new name.")
+	hint := styles.HighlightStyle.Render("y") + styles.SubtitleStyle.Render(": yes, rename remote too") +
+		"\n" + styles.HighlightStyle.Render("n") + styles.SubtitleStyle.Render(": no, local only") +
+		"\n" + styles.HighlightStyle.Render("esc") + styles.SubtitleStyle.Render(": cancel")
+
+	body := title + "\n\n" + desc + "\n\n" + hint
+
+	box := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(styles.ColorWarning).
+		Padding(1, 2).
+		Width(56).
+		Render(body)
+
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, box,
+		lipgloss.WithWhitespaceChars(" "),
+		lipgloss.WithWhitespaceForeground(lipgloss.Color("0")),
+	)
 }
 
 func (m Model) handleCreateInput(msg tea.KeyMsg) (Model, tea.Cmd) {
@@ -212,13 +252,36 @@ func (m Model) handleRenameInput(msg tea.KeyMsg) (Model, tea.Cmd) {
 			return m, nil
 		}
 		m.renaming = false
+		if m.repo.HasUpstream(m.renamingFrom) {
+			m.confirmRemote = true
+			m.pendingOldName = m.renamingFrom
+			m.pendingNewName = newName
+			return m, nil
+		}
 		m.status = styles.BadgePending.Render("Renaming ") + styles.HighlightStyle.Render(m.renamingFrom) + styles.BadgePending.Render("...")
-		return m, m.renameBranch(m.renamingFrom, newName)
+		return m, m.renameBranch(m.renamingFrom, newName, false)
 	}
 
 	var cmd tea.Cmd
 	m.nameInput, cmd = m.nameInput.Update(msg)
 	return m, cmd
+}
+
+func (m Model) handleConfirmRemote(msg tea.KeyMsg) (Model, tea.Cmd) {
+	switch msg.String() {
+	case "y":
+		m.confirmRemote = false
+		m.status = styles.BadgePending.Render("Renaming ") + styles.HighlightStyle.Render(m.pendingOldName) + styles.BadgePending.Render(" (local + remote)...")
+		return m, m.renameBranch(m.pendingOldName, m.pendingNewName, true)
+	case "n":
+		m.confirmRemote = false
+		m.status = styles.BadgePending.Render("Renaming ") + styles.HighlightStyle.Render(m.pendingOldName) + styles.BadgePending.Render(" (local only)...")
+		return m, m.renameBranch(m.pendingOldName, m.pendingNewName, false)
+	case "esc":
+		m.confirmRemote = false
+		return m, nil
+	}
+	return m, nil
 }
 
 func (m Model) loadBranches() tea.Msg {
@@ -240,9 +303,15 @@ func (m Model) createBranch(name string) tea.Cmd {
 	}
 }
 
-func (m Model) renameBranch(oldName, newName string) tea.Cmd {
+func (m Model) renameBranch(oldName, newName string, renameRemote bool) tea.Cmd {
 	return func() tea.Msg {
 		err := m.repo.RenameBranch(oldName, newName)
-		return branchRenamedMsg{oldName: oldName, newName: newName, err: err}
+		if err != nil {
+			return branchRenamedMsg{oldName: oldName, newName: newName, err: err}
+		}
+		if renameRemote {
+			err = m.repo.RenameRemoteBranch(oldName, newName)
+		}
+		return branchRenamedMsg{oldName: oldName, newName: newName, renamedRemote: renameRemote, err: err}
 	}
 }

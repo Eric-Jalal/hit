@@ -156,6 +156,23 @@ func (r *Repo) RenameBranch(oldName, newName string) error {
 	return nil
 }
 
+func (r *Repo) RenameRemoteBranch(oldName, newName string) error {
+	// Delete old remote branch
+	cmd := exec.Command("git", "push", "origin", "--delete", oldName)
+	cmd.Dir = r.path
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("delete remote: %s", strings.TrimSpace(string(out)))
+	}
+
+	// Push new branch name
+	cmd = exec.Command("git", "push", "-u", "origin", newName)
+	cmd.Dir = r.path
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("push new name: %s", strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
 func (r *Repo) CurrentBranch() string {
 	head, err := r.repo.Head()
 	if err != nil {
