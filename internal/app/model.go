@@ -126,16 +126,16 @@ func (m Model) View() string {
 	switch m.currentView {
 	case ViewBranches:
 		content = m.branchModel.View()
-		hints = "enter: checkout | r: refresh | /: filter | tab: next view | q: quit"
+		hints = formatHints([][]string{{"enter", "checkout"}, {"r", "refresh"}, {"/", "filter"}, {"tab", "next view"}, {"q", "quit"}})
 	case ViewCI:
 		content = m.ciModel.View()
-		hints = "enter: details | esc: back | r: refresh | tab: next view | q: quit"
+		hints = formatHints([][]string{{"enter", "details"}, {"esc", "back"}, {"r", "refresh"}, {"tab", "next view"}, {"q", "quit"}})
 	case ViewPR:
 		content = m.prModel.View()
-		hints = "tab: next view | q: quit"
+		hints = formatHints([][]string{{"tab", "next view"}, {"q", "quit"}})
 	case ViewReview:
 		content = m.reviewModel.View()
-		hints = "tab: next view | q: quit"
+		hints = formatHints([][]string{{"tab", "next view"}, {"q", "quit"}})
 	}
 	footer := styles.StatusBarStyle.Render(hints)
 
@@ -185,6 +185,17 @@ func (m *Model) handleViewSwitch(msg SwitchViewMsg) tea.Cmd {
 		}
 	}
 	return nil
+}
+
+func formatHints(pairs [][]string) string {
+	key := lipgloss.NewStyle().Foreground(styles.ColorText).Bold(true)
+	desc := lipgloss.NewStyle().Foreground(styles.ColorMuted)
+	sep := desc.Render(" · ")
+	var parts []string
+	for _, p := range pairs {
+		parts = append(parts, key.Render(p[0])+" "+desc.Render(p[1]))
+	}
+	return strings.Join(parts, sep)
 }
 
 func (m *Model) propagateSize(msg tea.WindowSizeMsg) tea.Cmd {

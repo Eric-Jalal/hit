@@ -1,8 +1,6 @@
 package branches
 
 import (
-	"fmt"
-
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -51,7 +49,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	case branchesLoadedMsg:
 		if msg.err != nil {
-			m.status = fmt.Sprintf("Error: %s", msg.err)
+			m.status = styles.ErrorLineStyle.Render("Error: ") + styles.SubtitleStyle.Render(msg.err.Error())
 			return m, nil
 		}
 		items := make([]list.Item, len(msg.branches))
@@ -64,10 +62,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	case checkoutDoneMsg:
 		if msg.err != nil {
-			m.status = styles.ErrorLineStyle.Render(fmt.Sprintf("Checkout failed: %s", msg.err))
+			m.status = styles.ErrorLineStyle.Render("Checkout failed: ") + styles.SubtitleStyle.Render(msg.err.Error())
 			return m, nil
 		}
-		m.status = styles.BadgeSuccess.Render(fmt.Sprintf("Switched to %s", msg.branch))
+		m.status = styles.BadgeSuccess.Render("Switched to ") + styles.HighlightStyle.Render(msg.branch)
 		return m, m.loadBranches
 
 	case tea.KeyMsg:
@@ -84,14 +82,14 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				return m, nil
 			}
 			if selected.branch.IsCurrent {
-				m.status = "Already on this branch"
+				m.status = styles.BadgeNeutral.Render("Already on ") + styles.HighlightStyle.Render(selected.branch.Name)
 				return m, nil
 			}
-			m.status = fmt.Sprintf("Checking out %s...", selected.branch.Name)
+			m.status = styles.BadgePending.Render("Checking out ") + styles.HighlightStyle.Render(selected.branch.Name) + styles.BadgePending.Render("...")
 			return m, m.checkout(selected.branch.Name)
 
 		case "r":
-			m.status = "Refreshing..."
+			m.status = styles.BadgePending.Render("Refreshing...")
 			return m, m.loadBranches
 		}
 	}
