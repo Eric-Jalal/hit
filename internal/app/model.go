@@ -144,9 +144,9 @@ func (m Model) View() string {
 	case ViewBranches:
 		content = m.branchModel.View()
 		if m.branchModel.IsInputActive() {
-			hints = formatHints([][]string{{"enter", "create"}, {"esc", "cancel"}})
+			hints = formatHints([][]string{{"enter", "confirm"}, {"esc", "cancel"}})
 		} else {
-			hints = formatHints([][]string{{"enter", "checkout"}, {"a", "new branch"}, {"r", "refresh"}, {"/", "filter"}, {"tab", "next view"}, {"q", "quit"}})
+			hints = formatHints([][]string{{"enter", "checkout"}, {"a", "new branch"}, {"R", "rename"}, {"r", "refresh"}, {"/", "filter"}, {"tab", "next view"}, {"q", "quit"}})
 		}
 	case ViewCI:
 		content = m.ciModel.View()
