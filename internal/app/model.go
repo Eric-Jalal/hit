@@ -28,7 +28,7 @@ const (
 	ViewOrg
 )
 
-const reflogPaneWidth = 80
+const reflogPaneWidth = 100
 
 var tabNames = []string{
 	styles.IconBranch + " Branches",
@@ -195,7 +195,7 @@ func (m Model) View() string {
 
 	contentHeight := m.height - lipgloss.Height(tabBar) - lipgloss.Height(repoInfo) - lipgloss.Height(footer)
 
-	showReflog := m.width >= 160
+	showReflog := m.width >= 200
 	if showReflog {
 		mainWidth := m.width - reflogPaneWidth
 		mainContent := lipgloss.NewStyle().Width(mainWidth).Height(contentHeight).Render(content)
