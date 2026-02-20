@@ -24,6 +24,11 @@ type branchCreatedMsg struct {
 	err    error
 }
 
+type pushDoneMsg struct {
+	branch string
+	err    error
+}
+
 type branchRenamedMsg struct {
 	oldName     string
 	newName     string
@@ -109,6 +114,14 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		m.status = styles.BadgeSuccess.Render("Created and switched to ") + styles.HighlightStyle.Render(msg.branch)
 		return m, m.loadBranches
 
+	case pushDoneMsg:
+		if msg.err != nil {
+			m.status = styles.ErrorLineStyle.Render("Push failed: ") + styles.SubtitleStyle.Render(msg.err.Error())
+			return m, nil
+		}
+		m.status = styles.BadgeSuccess.Render("Pushed ") + styles.HighlightStyle.Render(msg.branch) + styles.BadgeSuccess.Render(" to origin")
+		return m, m.loadBranches
+
 	case branchRenamedMsg:
 		if msg.err != nil {
 			m.status = styles.ErrorLineStyle.Render("Rename failed: ") + styles.SubtitleStyle.Render(msg.err.Error())
@@ -162,6 +175,14 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			m.nameInput.Focus()
 			m.status = ""
 			return m, m.nameInput.Cursor.BlinkCmd()
+
+		case "p":
+			selected, ok := m.list.SelectedItem().(branchItem)
+			if !ok {
+				return m, nil
+			}
+			m.status = styles.BadgePending.Render("Pushing ") + styles.HighlightStyle.Render(selected.branch.Name) + styles.BadgePending.Render("...")
+			return m, m.pushBranch(selected.branch.Name)
 
 		case "R":
 			selected, ok := m.list.SelectedItem().(branchItem)
@@ -300,6 +321,13 @@ func (m Model) createBranch(name string) tea.Cmd {
 	return func() tea.Msg {
 		err := m.repo.CreateBranch(name)
 		return branchCreatedMsg{branch: name, err: err}
+	}
+}
+
+func (m Model) pushBranch(branch string) tea.Cmd {
+	return func() tea.Msg {
+		err := m.repo.PushBranch(branch)
+		return pushDoneMsg{branch: branch, err: err}
 	}
 }
 

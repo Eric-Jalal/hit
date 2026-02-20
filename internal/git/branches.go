@@ -173,6 +173,15 @@ func (r *Repo) RenameRemoteBranch(oldName, newName string) error {
 	return nil
 }
 
+func (r *Repo) PushBranch(branch string) error {
+	cmd := exec.Command("git", "push", "-u", "origin", branch)
+	cmd.Dir = r.path
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("%s", strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
 func (r *Repo) CurrentBranch() string {
 	head, err := r.repo.Head()
 	if err != nil {
