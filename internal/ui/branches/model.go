@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/elisa-content-delivery/hit/internal/git"
 	"github.com/elisa-content-delivery/hit/internal/styles"
+	"github.com/elisa-content-delivery/hit/internal/ui/reflog"
 )
 
 type checkoutDoneMsg struct {
@@ -104,7 +105,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			return m, nil
 		}
 		m.status = styles.BadgeSuccess.Render("Switched to ") + styles.HighlightStyle.Render(msg.branch)
-		return m, m.loadBranches
+		return m, tea.Batch(m.loadBranches, emitRefreshReflog)
 
 	case branchCreatedMsg:
 		if msg.err != nil {
@@ -112,7 +113,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			return m, nil
 		}
 		m.status = styles.BadgeSuccess.Render("Created and switched to ") + styles.HighlightStyle.Render(msg.branch)
-		return m, m.loadBranches
+		return m, tea.Batch(m.loadBranches, emitRefreshReflog)
 
 	case pushDoneMsg:
 		if msg.err != nil {
@@ -120,7 +121,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			return m, nil
 		}
 		m.status = styles.BadgeSuccess.Render("Pushed ") + styles.HighlightStyle.Render(msg.branch) + styles.BadgeSuccess.Render(" to origin")
-		return m, m.loadBranches
+		return m, tea.Batch(m.loadBranches, emitRefreshReflog)
 
 	case branchRenamedMsg:
 		if msg.err != nil {
@@ -132,7 +133,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			status += styles.BadgeSuccess.Render(" (local + remote)")
 		}
 		m.status = status
-		return m, m.loadBranches
+		return m, tea.Batch(m.loadBranches, emitRefreshReflog)
 
 	case tea.KeyMsg:
 		if m.confirmRemote {
@@ -329,6 +330,10 @@ func (m Model) pushBranch(branch string) tea.Cmd {
 		err := m.repo.PushBranch(branch)
 		return pushDoneMsg{branch: branch, err: err}
 	}
+}
+
+func emitRefreshReflog() tea.Msg {
+	return reflog.RefreshReflogMsg{}
 }
 
 func (m Model) renameBranch(oldName, newName string, renameRemote bool) tea.Cmd {

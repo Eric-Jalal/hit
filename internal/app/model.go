@@ -13,6 +13,7 @@ import (
 	"github.com/elisa-content-delivery/hit/internal/ui/ci"
 	"github.com/elisa-content-delivery/hit/internal/ui/org"
 	"github.com/elisa-content-delivery/hit/internal/ui/pr"
+	"github.com/elisa-content-delivery/hit/internal/ui/reflog"
 	"github.com/elisa-content-delivery/hit/internal/ui/review"
 )
 
@@ -26,6 +27,8 @@ const (
 	ViewReview
 	ViewOrg
 )
+
+const reflogPaneWidth = 40
 
 var tabNames = []string{
 	styles.IconBranch + " Branches",
@@ -48,6 +51,7 @@ type Model struct {
 	prModel     pr.Model
 	reviewModel review.Model
 	orgModel    org.Model
+	reflogModel reflog.Model
 	width       int
 	height      int
 	ready       bool
@@ -63,6 +67,7 @@ func NewModel(repo *git.Repo, owner, repoName string) Model {
 		branchModel: branches.New(repo),
 		prModel:     pr.New(),
 		reviewModel: review.New(),
+		reflogModel: reflog.New(repo),
 	}
 }
 
@@ -93,6 +98,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case SwitchViewMsg:
 		return m, m.handleViewSwitch(msg)
 
+	case reflog.RefreshReflogMsg:
+		var cmd tea.Cmd
+		m.reflogModel, cmd = m.reflogModel.Update(msg)
+		return m, cmd
+
 	case auth.AuthDoneMsg:
 		m.token = msg.Token
 		client, err := gh.NewClient(m.owner, m.repoName, msg.Token)
@@ -102,7 +112,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.orgModel = org.New(client)
 		}
 		m.currentView = ViewBranches
-		cmds := []tea.Cmd{m.branchModel.Init()}
+		cmds := []tea.Cmd{m.branchModel.Init(), m.reflogModel.Init()}
 		if err == nil {
 			cmds = append(cmds, m.ciModel.Init())
 		}
@@ -110,21 +120,35 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	var cmd tea.Cmd
+	var cmds []tea.Cmd
 	switch m.currentView {
 	case ViewAuth:
 		m.authModel, cmd = m.authModel.Update(msg)
+		cmds = append(cmds, cmd)
 	case ViewBranches:
 		m.branchModel, cmd = m.branchModel.Update(msg)
+		cmds = append(cmds, cmd)
 	case ViewCI:
 		m.ciModel, cmd = m.ciModel.Update(msg)
+		cmds = append(cmds, cmd)
 	case ViewPR:
 		m.prModel, cmd = m.prModel.Update(msg)
+		cmds = append(cmds, cmd)
 	case ViewReview:
 		m.reviewModel, cmd = m.reviewModel.Update(msg)
+		cmds = append(cmds, cmd)
 	case ViewOrg:
 		m.orgModel, cmd = m.orgModel.Update(msg)
+		cmds = append(cmds, cmd)
 	}
-	return m, cmd
+
+	// Forward non-key messages to reflog pane
+	if _, isKey := msg.(tea.KeyMsg); !isKey && m.currentView != ViewAuth {
+		m.reflogModel, cmd = m.reflogModel.Update(msg)
+		cmds = append(cmds, cmd)
+	}
+
+	return m, tea.Batch(cmds...)
 }
 
 func (m Model) View() string {
@@ -170,7 +194,16 @@ func (m Model) View() string {
 	footer := styles.StatusBarStyle.Render(hints)
 
 	contentHeight := m.height - lipgloss.Height(tabBar) - lipgloss.Height(repoInfo) - lipgloss.Height(footer)
-	content = lipgloss.NewStyle().Width(m.width).Height(contentHeight).Render(content)
+
+	showReflog := m.width >= 80
+	if showReflog {
+		mainWidth := m.width - reflogPaneWidth
+		mainContent := lipgloss.NewStyle().Width(mainWidth).Height(contentHeight).Render(content)
+		reflogContent := m.reflogModel.View()
+		content = lipgloss.JoinHorizontal(lipgloss.Top, mainContent, reflogContent)
+	} else {
+		content = lipgloss.NewStyle().Width(m.width).Height(contentHeight).Render(content)
+	}
 
 	return lipgloss.JoinVertical(lipgloss.Left, tabBar, repoInfo, content, footer)
 }
@@ -253,8 +286,15 @@ func (m *Model) propagateSize(msg tea.WindowSizeMsg) tea.Cmd {
 	repoInfo := m.renderRepoInfo()
 	footer := styles.StatusBarStyle.Render("q: quit | tab: next view | esc: back | ?: help")
 	contentHeight := msg.Height - lipgloss.Height(tabBar) - lipgloss.Height(repoInfo) - lipgloss.Height(footer)
+
+	showReflog := msg.Width >= 80
+	mainWidth := msg.Width
+	if showReflog {
+		mainWidth = msg.Width - reflogPaneWidth
+	}
+
 	contentMsg := tea.WindowSizeMsg{
-		Width:  msg.Width,
+		Width:  mainWidth,
 		Height: contentHeight,
 	}
 
@@ -275,6 +315,15 @@ func (m *Model) propagateSize(msg tea.WindowSizeMsg) tea.Cmd {
 	cmds = append(cmds, cmd)
 	if m.ghClient != nil {
 		m.orgModel, cmd = m.orgModel.Update(contentMsg)
+		cmds = append(cmds, cmd)
+	}
+
+	if showReflog {
+		reflogMsg := tea.WindowSizeMsg{
+			Width:  reflogPaneWidth,
+			Height: contentHeight,
+		}
+		m.reflogModel, cmd = m.reflogModel.Update(reflogMsg)
 		cmds = append(cmds, cmd)
 	}
 
