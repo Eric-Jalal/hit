@@ -58,7 +58,7 @@ func NewModel(repo *git.Repo, owner, repoName string) Model {
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(m.authModel.Init(), m.branchModel.Init())
+	return m.authModel.Init()
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -87,7 +87,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ciModel = ci.New(client, m.repo.CurrentBranch())
 		}
 		m.currentView = ViewBranches
-		var cmds []tea.Cmd
+		cmds := []tea.Cmd{m.branchModel.Init()}
 		if err == nil {
 			cmds = append(cmds, m.ciModel.Init())
 		}
@@ -167,9 +167,14 @@ func (m *Model) handleViewSwitch(msg SwitchViewMsg) tea.Cmd {
 		m.currentView = msg.View
 	}
 
-	if m.currentView == ViewCI && m.ghClient != nil {
-		m.ciModel = ci.New(m.ghClient, m.repo.CurrentBranch())
-		return m.ciModel.Init()
+	switch m.currentView {
+	case ViewBranches:
+		return m.branchModel.Init()
+	case ViewCI:
+		if m.ghClient != nil {
+			m.ciModel = ci.New(m.ghClient, m.repo.CurrentBranch())
+			return m.ciModel.Init()
+		}
 	}
 	return nil
 }

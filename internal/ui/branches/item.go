@@ -2,6 +2,7 @@ package branches
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/elisa-content-delivery/hit/internal/git"
 	"github.com/elisa-content-delivery/hit/internal/styles"
@@ -20,13 +21,47 @@ func (b branchItem) Title() string {
 }
 
 func (b branchItem) Description() string {
-	return fmt.Sprintf("%s %s — %s",
-		styles.SubtitleStyle.Render(b.branch.Hash),
-		b.branch.Subject,
-		styles.SubtitleStyle.Render(b.branch.Author),
-	)
+	parts := []string{
+		fmt.Sprintf("%s %s", styles.SubtitleStyle.Render(b.branch.Hash), b.branch.Subject),
+	}
+
+	parts = append(parts, remoteStatus(b.branch))
+
+	if ds := defaultStatus(b.branch); ds != "" {
+		parts = append(parts, ds)
+	}
+
+	return strings.Join(parts, " · ")
 }
 
 func (b branchItem) FilterValue() string {
 	return b.branch.Name
+}
+
+func remoteStatus(b git.Branch) string {
+	if !b.HasRemote {
+		return styles.SubtitleStyle.Render("local")
+	}
+	return styles.BadgeSuccess.Render("☁ " + formatAheadBehind(b.RemoteAhead, b.RemoteBehind))
+}
+
+func defaultStatus(b git.Branch) string {
+	if b.IsDefault || b.DefaultBranch == "" {
+		return ""
+	}
+	ab := formatAheadBehind(b.DefaultAhead, b.DefaultBehind)
+	return styles.SubtitleStyle.Render(ab + " " + b.DefaultBranch)
+}
+
+func formatAheadBehind(ahead, behind int) string {
+	switch {
+	case ahead == 0 && behind == 0:
+		return "="
+	case behind == 0:
+		return fmt.Sprintf("↑%d", ahead)
+	case ahead == 0:
+		return fmt.Sprintf("↓%d", behind)
+	default:
+		return fmt.Sprintf("↑%d↓%d", ahead, behind)
+	}
 }
