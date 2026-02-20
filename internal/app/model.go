@@ -67,7 +67,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.ready = true
-		return m, m.propagateSize(msg)
+		cmd := m.propagateSize(msg)
+		return m, cmd
 
 	case tea.KeyMsg:
 		if m.currentView != ViewAuth {
@@ -120,6 +121,8 @@ func (m Model) View() string {
 	}
 
 	tabBar := m.renderTabBar()
+	footer := styles.StatusBarStyle.Render("q: quit | tab: next view | esc: back | ?: help")
+
 	var content string
 	switch m.currentView {
 	case ViewBranches:
@@ -132,7 +135,8 @@ func (m Model) View() string {
 		content = m.reviewModel.View()
 	}
 
-	footer := styles.StatusBarStyle.Render("q: quit | tab: next view | esc: back | ?: help")
+	contentHeight := m.height - lipgloss.Height(tabBar) - lipgloss.Height(footer)
+	content = lipgloss.NewStyle().Width(m.width).Height(contentHeight).Render(content)
 
 	return lipgloss.JoinVertical(lipgloss.Left, tabBar, content, footer)
 }
@@ -179,10 +183,13 @@ func (m *Model) handleViewSwitch(msg SwitchViewMsg) tea.Cmd {
 	return nil
 }
 
-func (m Model) propagateSize(msg tea.WindowSizeMsg) tea.Cmd {
+func (m *Model) propagateSize(msg tea.WindowSizeMsg) tea.Cmd {
+	tabBar := m.renderTabBar()
+	footer := styles.StatusBarStyle.Render("q: quit | tab: next view | esc: back | ?: help")
+	contentHeight := msg.Height - lipgloss.Height(tabBar) - lipgloss.Height(footer)
 	contentMsg := tea.WindowSizeMsg{
 		Width:  msg.Width,
-		Height: msg.Height - 4,
+		Height: contentHeight,
 	}
 
 	var cmds []tea.Cmd
