@@ -16,4 +16,5 @@ const (
 	IconPR       = "\uf407" //
 	IconEye      = "\uf06e" //
 	IconRefresh  = "\uf021" //
+	IconOrg      = "\uf0c0" //
 )

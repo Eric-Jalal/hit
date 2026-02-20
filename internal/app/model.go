@@ -11,6 +11,7 @@ import (
 	"github.com/elisa-content-delivery/hit/internal/ui/auth"
 	"github.com/elisa-content-delivery/hit/internal/ui/branches"
 	"github.com/elisa-content-delivery/hit/internal/ui/ci"
+	"github.com/elisa-content-delivery/hit/internal/ui/org"
 	"github.com/elisa-content-delivery/hit/internal/ui/pr"
 	"github.com/elisa-content-delivery/hit/internal/ui/review"
 )
@@ -23,6 +24,7 @@ const (
 	ViewCI
 	ViewPR
 	ViewReview
+	ViewOrg
 )
 
 var tabNames = []string{
@@ -30,6 +32,7 @@ var tabNames = []string{
 	styles.IconGear + " CI",
 	styles.IconPR + " PRs",
 	styles.IconEye + " Reviews",
+	styles.IconOrg + " Org",
 }
 
 type Model struct {
@@ -44,6 +47,7 @@ type Model struct {
 	ciModel     ci.Model
 	prModel     pr.Model
 	reviewModel review.Model
+	orgModel    org.Model
 	width       int
 	height      int
 	ready       bool
@@ -77,7 +81,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		if m.currentView != ViewAuth {
-			if cmd, handled := HandleGlobalKeys(msg); handled {
+			if m.currentView == ViewOrg && m.orgModel.IsOverlayActive() {
+				// let the org model handle all keys when clone overlay is open
+			} else if cmd, handled := HandleGlobalKeys(msg); handled {
 				return m, cmd
 			}
 		}
@@ -91,6 +97,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if err == nil {
 			m.ghClient = client
 			m.ciModel = ci.New(client, m.repo.CurrentBranch())
+			m.orgModel = org.New(client)
 		}
 		m.currentView = ViewBranches
 		cmds := []tea.Cmd{m.branchModel.Init()}
@@ -112,6 +119,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.prModel, cmd = m.prModel.Update(msg)
 	case ViewReview:
 		m.reviewModel, cmd = m.reviewModel.Update(msg)
+	case ViewOrg:
+		m.orgModel, cmd = m.orgModel.Update(msg)
 	}
 	return m, cmd
 }
@@ -141,6 +150,13 @@ func (m Model) View() string {
 	case ViewReview:
 		content = m.reviewModel.View()
 		hints = formatHints([][]string{{"tab", "next view"}, {"q", "quit"}})
+	case ViewOrg:
+		content = m.orgModel.View()
+		if m.orgModel.IsOverlayActive() {
+			hints = formatHints([][]string{{"enter", "clone"}, {"esc", "cancel"}})
+		} else {
+			hints = formatHints([][]string{{"enter", "select"}, {"esc", "back"}, {"r", "refresh"}, {"tab", "next view"}, {"q", "quit"}})
+		}
 	}
 	footer := styles.StatusBarStyle.Render(hints)
 
@@ -166,14 +182,14 @@ func (m Model) renderTabBar() string {
 func (m *Model) handleViewSwitch(msg SwitchViewMsg) tea.Cmd {
 	if msg.View == -1 {
 		next := int(m.currentView) + 1
-		if next > int(ViewReview) {
+		if next > int(ViewOrg) {
 			next = int(ViewBranches)
 		}
 		m.currentView = View(next)
 	} else if msg.View == -2 {
 		prev := int(m.currentView) - 1
 		if prev < int(ViewBranches) {
-			prev = int(ViewReview)
+			prev = int(ViewOrg)
 		}
 		m.currentView = View(prev)
 	} else {
@@ -187,6 +203,10 @@ func (m *Model) handleViewSwitch(msg SwitchViewMsg) tea.Cmd {
 		if m.ghClient != nil {
 			m.ciModel = ci.New(m.ghClient, m.repo.CurrentBranch())
 			return m.ciModel.Init()
+		}
+	case ViewOrg:
+		if m.ghClient != nil {
+			return m.orgModel.Init()
 		}
 	}
 	return nil
@@ -227,6 +247,10 @@ func (m *Model) propagateSize(msg tea.WindowSizeMsg) tea.Cmd {
 	cmds = append(cmds, cmd)
 	m.reviewModel, cmd = m.reviewModel.Update(contentMsg)
 	cmds = append(cmds, cmd)
+	if m.ghClient != nil {
+		m.orgModel, cmd = m.orgModel.Update(contentMsg)
+		cmds = append(cmds, cmd)
+	}
 
 	return tea.Batch(cmds...)
 }

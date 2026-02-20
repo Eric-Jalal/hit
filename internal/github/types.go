@@ -46,6 +46,21 @@ type ErrorAnnotation struct {
 	Message string
 }
 
+type Org struct {
+	Login       string `json:"login"`
+	Description string `json:"description"`
+}
+
+type OrgRepo struct {
+	Name        string    `json:"name"`
+	FullName    string    `json:"full_name"`
+	Description string    `json:"description"`
+	SSHURL      string    `json:"ssh_url"`
+	Private     bool      `json:"private"`
+	Archived    bool      `json:"archived"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
 type PR struct {
 	Number  int    `json:"number"`
 	Title   string `json:"title"`
