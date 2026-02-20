@@ -127,6 +127,26 @@ func (r *Repo) ListBranches() ([]Branch, error) {
 	return branches, nil
 }
 
+func (r *Repo) CreateBranch(name string) error {
+	head, err := r.repo.Head()
+	if err != nil {
+		return fmt.Errorf("cannot read HEAD: %w", err)
+	}
+
+	ref := plumbing.NewHashReference(plumbing.NewBranchReferenceName(name), head.Hash())
+	if err := r.repo.Storer.SetReference(ref); err != nil {
+		return fmt.Errorf("failed to create branch: %w", err)
+	}
+
+	w, err := r.repo.Worktree()
+	if err != nil {
+		return err
+	}
+	return w.Checkout(&gogit.CheckoutOptions{
+		Branch: plumbing.NewBranchReferenceName(name),
+	})
+}
+
 func (r *Repo) CurrentBranch() string {
 	head, err := r.repo.Head()
 	if err != nil {
