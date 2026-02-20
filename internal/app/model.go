@@ -28,7 +28,7 @@ const (
 	ViewOrg
 )
 
-const reflogPaneWidth = 40
+const reflogPaneWidth = 80
 
 var tabNames = []string{
 	styles.IconBranch + " Branches",
@@ -195,7 +195,7 @@ func (m Model) View() string {
 
 	contentHeight := m.height - lipgloss.Height(tabBar) - lipgloss.Height(repoInfo) - lipgloss.Height(footer)
 
-	showReflog := m.width >= 80
+	showReflog := m.width >= 160
 	if showReflog {
 		mainWidth := m.width - reflogPaneWidth
 		mainContent := lipgloss.NewStyle().Width(mainWidth).Height(contentHeight).Render(content)
@@ -287,7 +287,7 @@ func (m *Model) propagateSize(msg tea.WindowSizeMsg) tea.Cmd {
 	footer := styles.StatusBarStyle.Render("q: quit | tab: next view | esc: back | ?: help")
 	contentHeight := msg.Height - lipgloss.Height(tabBar) - lipgloss.Height(repoInfo) - lipgloss.Height(footer)
 
-	showReflog := msg.Width >= 80
+	showReflog := msg.Width >= 160
 	mainWidth := msg.Width
 	if showReflog {
 		mainWidth = msg.Width - reflogPaneWidth
