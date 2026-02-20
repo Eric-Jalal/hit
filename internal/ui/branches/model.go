@@ -31,7 +31,7 @@ type Model struct {
 func New(repo *git.Repo) Model {
 	l := list.New(nil, list.NewDefaultDelegate(), 0, 0)
 	l.Title = "Branches"
-	l.SetShowHelp(true)
+	l.SetShowHelp(false)
 	l.SetFilteringEnabled(true)
 	l.Styles.Title = styles.TitleStyle
 	return Model{repo: repo, list: l}

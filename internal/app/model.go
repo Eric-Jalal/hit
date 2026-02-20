@@ -121,19 +121,23 @@ func (m Model) View() string {
 	}
 
 	tabBar := m.renderTabBar()
-	footer := styles.StatusBarStyle.Render("q: quit | tab: next view | esc: back | ?: help")
-
 	var content string
+	var hints string
 	switch m.currentView {
 	case ViewBranches:
 		content = m.branchModel.View()
+		hints = "enter: checkout | r: refresh | /: filter | tab: next view | q: quit"
 	case ViewCI:
 		content = m.ciModel.View()
+		hints = "enter: details | esc: back | r: refresh | tab: next view | q: quit"
 	case ViewPR:
 		content = m.prModel.View()
+		hints = "tab: next view | q: quit"
 	case ViewReview:
 		content = m.reviewModel.View()
+		hints = "tab: next view | q: quit"
 	}
+	footer := styles.StatusBarStyle.Render(hints)
 
 	contentHeight := m.height - lipgloss.Height(tabBar) - lipgloss.Height(footer)
 	content = lipgloss.NewStyle().Width(m.width).Height(contentHeight).Render(content)
