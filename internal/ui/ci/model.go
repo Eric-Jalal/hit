@@ -41,6 +41,7 @@ func (r runItem) Title() string {
 	badge := statusBadge(r.run.Conclusion, r.run.Status)
 	return fmt.Sprintf("%s %s #%d", badge, r.run.Name, r.run.RunNumber)
 }
+
 func (r runItem) Description() string {
 	return styles.SubtitleStyle.Render(r.run.HeadSHA[:7]) + " " + r.run.CreatedAt.Format("Jan 02 15:04")
 }
@@ -51,6 +52,7 @@ type jobItem struct{ job gh.Job }
 func (j jobItem) Title() string {
 	return statusBadge(j.job.Conclusion, j.job.Status) + " " + j.job.Name
 }
+
 func (j jobItem) Description() string {
 	if j.job.CompletedAt.IsZero() {
 		return "running..."

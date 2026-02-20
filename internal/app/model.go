@@ -30,9 +30,9 @@ const (
 var tabNames = []string{
 	styles.IconBranch + " Branches",
 	styles.IconGear + " CI",
-	styles.IconPR + " PRs",
-	styles.IconEye + " Reviews",
-	styles.IconOrg + " Org",
+	styles.IconPR + "  PRs",
+	styles.IconEye + "  Reviews",
+	styles.IconOrg + "  Org",
 }
 
 type Model struct {
@@ -83,6 +83,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.currentView != ViewAuth {
 			if m.currentView == ViewOrg && m.orgModel.IsOverlayActive() {
 				// let the org model handle all keys when clone overlay is open
+			} else if m.currentView == ViewBranches && m.branchModel.IsInputActive() {
+				// let the branch model handle all keys when creating a branch
 			} else if cmd, handled := HandleGlobalKeys(msg); handled {
 				return m, cmd
 			}
@@ -141,7 +143,11 @@ func (m Model) View() string {
 	switch m.currentView {
 	case ViewBranches:
 		content = m.branchModel.View()
-		hints = formatHints([][]string{{"enter", "checkout"}, {"r", "refresh"}, {"/", "filter"}, {"tab", "next view"}, {"q", "quit"}})
+		if m.branchModel.IsInputActive() {
+			hints = formatHints([][]string{{"enter", "create"}, {"esc", "cancel"}})
+		} else {
+			hints = formatHints([][]string{{"enter", "checkout"}, {"a", "new branch"}, {"r", "refresh"}, {"/", "filter"}, {"tab", "next view"}, {"q", "quit"}})
+		}
 	case ViewCI:
 		content = m.ciModel.View()
 		hints = formatHints([][]string{{"enter", "details"}, {"esc", "back"}, {"r", "refresh"}, {"tab", "next view"}, {"q", "quit"}})
