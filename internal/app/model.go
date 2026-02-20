@@ -135,6 +135,7 @@ func (m Model) View() string {
 	}
 
 	tabBar := m.renderTabBar()
+	repoInfo := m.renderRepoInfo()
 	var content string
 	var hints string
 	switch m.currentView {
@@ -160,10 +161,10 @@ func (m Model) View() string {
 	}
 	footer := styles.StatusBarStyle.Render(hints)
 
-	contentHeight := m.height - lipgloss.Height(tabBar) - lipgloss.Height(footer)
+	contentHeight := m.height - lipgloss.Height(tabBar) - lipgloss.Height(repoInfo) - lipgloss.Height(footer)
 	content = lipgloss.NewStyle().Width(m.width).Height(contentHeight).Render(content)
 
-	return lipgloss.JoinVertical(lipgloss.Left, tabBar, content, footer)
+	return lipgloss.JoinVertical(lipgloss.Left, tabBar, repoInfo, content, footer)
 }
 
 func (m Model) renderTabBar() string {
@@ -177,6 +178,22 @@ func (m Model) renderTabBar() string {
 		}
 	}
 	return styles.TabBarStyle.Render(strings.Join(tabs, " "))
+}
+
+func (m Model) renderRepoInfo() string {
+	name := lipgloss.NewStyle().Bold(true).Foreground(styles.ColorSecondary).Render(m.owner + "/" + m.repoName)
+	path := styles.SubtitleStyle.Render(m.repo.Path())
+
+	parts := []string{name, path}
+
+	branch := m.repo.CurrentBranch()
+	if branch != "" && m.repo.HasUpstream(branch) {
+		remote := styles.SubtitleStyle.Render(m.repo.RemoteURL())
+		parts = append(parts, remote)
+	}
+
+	sep := styles.SubtitleStyle.Render("  ")
+	return lipgloss.NewStyle().MarginLeft(1).Render(strings.Join(parts, sep))
 }
 
 func (m *Model) handleViewSwitch(msg SwitchViewMsg) tea.Cmd {
@@ -225,8 +242,9 @@ func formatHints(pairs [][]string) string {
 
 func (m *Model) propagateSize(msg tea.WindowSizeMsg) tea.Cmd {
 	tabBar := m.renderTabBar()
+	repoInfo := m.renderRepoInfo()
 	footer := styles.StatusBarStyle.Render("q: quit | tab: next view | esc: back | ?: help")
-	contentHeight := msg.Height - lipgloss.Height(tabBar) - lipgloss.Height(footer)
+	contentHeight := msg.Height - lipgloss.Height(tabBar) - lipgloss.Height(repoInfo) - lipgloss.Height(footer)
 	contentMsg := tea.WindowSizeMsg{
 		Width:  msg.Width,
 		Height: contentHeight,

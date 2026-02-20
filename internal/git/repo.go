@@ -3,9 +3,11 @@ package git
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	gogit "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 )
 
 type Repo struct {
@@ -29,6 +31,20 @@ func OpenCwd() (*Repo, error) {
 		return nil, err
 	}
 	return Open(cwd)
+}
+
+func (r *Repo) Path() string {
+	abs, err := filepath.Abs(r.path)
+	if err != nil {
+		return r.path
+	}
+	return abs
+}
+
+func (r *Repo) HasUpstream(branch string) bool {
+	ref := plumbing.NewRemoteReferenceName("origin", branch)
+	_, err := r.repo.Reference(ref, true)
+	return err == nil
 }
 
 func (r *Repo) RemoteURL() string {
