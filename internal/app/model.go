@@ -25,7 +25,12 @@ const (
 	ViewReview
 )
 
-var tabNames = []string{"Branches", "CI", "PRs", "Reviews"}
+var tabNames = []string{
+	styles.IconBranch + " Branches",
+	styles.IconGear + " CI",
+	styles.IconPR + " PRs",
+	styles.IconEye + " Reviews",
+}
 
 type Model struct {
 	repo        *git.Repo

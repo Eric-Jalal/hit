@@ -323,17 +323,17 @@ func (m Model) loadLog(jobID int64) tea.Cmd {
 
 func statusBadge(conclusion, status string) string {
 	if status == "in_progress" || status == "queued" {
-		return styles.BadgePending.Render("●")
+		return styles.BadgePending.Render(styles.IconPending)
 	}
 	switch conclusion {
 	case "success":
-		return styles.BadgeSuccess.Render("✓")
+		return styles.BadgeSuccess.Render(styles.IconCheck)
 	case "failure":
-		return styles.BadgeFailure.Render("✗")
+		return styles.BadgeFailure.Render(styles.IconCross)
 	case "cancelled":
-		return styles.BadgeNeutral.Render("○")
+		return styles.BadgeNeutral.Render(styles.IconStop)
 	case "skipped":
-		return styles.BadgeNeutral.Render("⊘")
+		return styles.BadgeNeutral.Render(styles.IconSkip)
 	default:
 		return styles.BadgeNeutral.Render("?")
 	}

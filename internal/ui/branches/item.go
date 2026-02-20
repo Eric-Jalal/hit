@@ -15,7 +15,7 @@ type branchItem struct {
 func (b branchItem) Title() string {
 	prefix := "  "
 	if b.branch.IsCurrent {
-		prefix = styles.HighlightStyle.Render("* ")
+		prefix = styles.HighlightStyle.Render(styles.IconBranch+" ")
 	}
 	return prefix + b.branch.Name
 }
@@ -40,9 +40,9 @@ func (b branchItem) FilterValue() string {
 
 func remoteStatus(b git.Branch) string {
 	if !b.HasRemote {
-		return styles.SubtitleStyle.Render("local")
+		return styles.SubtitleStyle.Render(styles.IconLocal + " local")
 	}
-	return styles.BadgeSuccess.Render("☁ " + formatAheadBehind(b.RemoteAhead, b.RemoteBehind))
+	return styles.BadgeSuccess.Render(styles.IconCloud + " " + formatAheadBehind(b.RemoteAhead, b.RemoteBehind))
 }
 
 func defaultStatus(b git.Branch) string {
@@ -56,12 +56,12 @@ func defaultStatus(b git.Branch) string {
 func formatAheadBehind(ahead, behind int) string {
 	switch {
 	case ahead == 0 && behind == 0:
-		return "="
+		return styles.IconCheck
 	case behind == 0:
-		return fmt.Sprintf("↑%d", ahead)
+		return fmt.Sprintf("%s%d", styles.IconArrowUp, ahead)
 	case ahead == 0:
-		return fmt.Sprintf("↓%d", behind)
+		return fmt.Sprintf("%s%d", styles.IconArrowDn, behind)
 	default:
-		return fmt.Sprintf("↑%d↓%d", ahead, behind)
+		return fmt.Sprintf("%s%d%s%d", styles.IconArrowUp, ahead, styles.IconArrowDn, behind)
 	}
 }
